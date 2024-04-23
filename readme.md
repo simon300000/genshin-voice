@@ -7,11 +7,11 @@ Last update at `2024-04-23`
 
 `361668` wavs
 
-`361224` without talkRole
+`361224` without speaker
 
-`51699` without text
+`51699` without transcription
 
-`720` without fileName
+`720` without file_name
 <!-- STATS_END -->
 
 Hugging Face 🤗 Datasets: [Genshin-Voice](https://huggingface.co/datasets/simon3000/genshin-voice)

@@ -182,11 +182,11 @@ Last update at \`${currentDate}\`
 
 \`${Object.keys(voiceMap).length}\` wavs
 
-\`${noRole}\` without talkRole
+\`${noRole}\` without speaker
 
-\`${noText}\` without text
+\`${noText}\` without transcription
 
-\`${noFileName}\` without fileName
+\`${noFileName}\` without file_name
 <!-- STATS_END -->`
 
 console.log(stats)
