@@ -1,3 +1,9 @@
 [submodule "hoyo-voice-extractor"]
 	path = hoyo-voice-extractor
 	url = https://github.com/simon300000/hoyo-voice-extractor.git
+[submodule "genshin-voice"]
+	path = genshin-voice
+	url = https://huggingface.co/datasets/simon3000/genshin-voice
+[submodule "GenshinData"]
+	path = GenshinData
+	url = https://gitlab.com/Dimbreath/AnimeGameData.git
