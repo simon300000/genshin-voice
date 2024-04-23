@@ -221,7 +221,7 @@ const metadata = Object.entries(voiceMap)
   })
   .join('\n')
 
-await writeFile('genshin-voice/metadata.json', metadata)
+await writeFile('genshin-voice/metadata.jsonl', metadata)
 
 type Voice = {
   fileName: string
