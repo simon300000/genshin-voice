@@ -195,6 +195,10 @@ const readme = await readFile('readme.md', 'utf-8')
 const updatedReadme = readme.replace(/<!-- STATS -->[\s\S]*<!-- STATS_END -->/, stats)
 await writeFile('readme.md', updatedReadme)
 
+const hfReadme = await readFile('genshin-voice/README.md', 'utf-8')
+const updatedHFReadme = hfReadme.replace(/<!-- STATS -->[\s\S]*<!-- STATS_END -->/, stats)
+await writeFile('genshin-voice/README.md', updatedHFReadme)
+
 console.log('Copying files to repository...')
 
 for (const wav of await readdir(WAV_PATH)) {
