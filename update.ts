@@ -201,11 +201,14 @@ await writeFile('genshin-voice/README.md', updatedHFReadme)
 
 console.log('Copying files to repository...')
 
+const copyPromise = []
 for (const wav of await readdir(WAV_PATH)) {
   if (extname(wav) === '.wav') {
-    await copyFile(join(WAV_PATH, wav), join(WAV_DESTINATION, wav))
+    copyPromise.push(copyFile(join(WAV_PATH, wav), join(WAV_DESTINATION, wav)))
   }
 }
+
+await Promise.all(copyPromise)
 
 await copyFile('result.json', 'genshin-voice/result.json')
 
