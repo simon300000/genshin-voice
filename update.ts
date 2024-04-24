@@ -1,7 +1,7 @@
-import { join, extname } from 'path'
-import { readdir, stat, readFile, writeFile, copyFile } from 'fs/promises'
+import { join, basename } from 'path'
+import { readFile, writeFile, copyFile, mkdir, rm } from 'fs/promises'
 
-import { encodeFNV64 } from './hoyo-voice-extractor/index.js'
+import { encodeFNV64, findFiles } from './hoyo-voice-extractor/index.js'
 
 const TEXT_MAP_MAP = {
   'Chinese': 'TextMapCHS.json',
@@ -83,27 +83,17 @@ const readNPCJSON = async (filePath: string) => {
   }
 }
 
-const findJSON = async (path: string): Promise<string[]> => {
-  const dir = await readdir(path)
-  const result = []
-  for (const file of dir) {
-    const filePath = join(path, file)
-    const fileStat = await stat(filePath)
-    if (fileStat.isDirectory()) {
-      result.push(...await findJSON(filePath))
-    } else {
-      if (extname(file) === '.json') {
-        result.push(filePath)
-      }
-    }
-  }
-  return result
+const findJSON = async (path: string) => findFiles(path, '.json')
+
+const subDirs = (wav: string) => {
+  const name = wav.split('.').join('')
+  return `${name.slice(0, 2)}/${name.slice(2, 4)}`
 }
 
 console.log('Reading result/wav...')
 
-for (const wav of await readdir(WAV_PATH)) {
-  voiceMap[wav] = {
+for (const wav of await findFiles(WAV_PATH, '.wav')) {
+  voiceMap[basename(wav)] = {
     fileName: '',
     language: '',
     text: '',
@@ -120,15 +110,17 @@ console.log(Object.keys(voiceMap).length, 'wavs found')
 console.log('Reading GenshinData/BinOutput/Voice...')
 
 const voiceJSON = await findJSON('GenshinData/BinOutput/Voice')
-for (const filePath of voiceJSON) {
-  await readVoiceJSON(filePath)
+while (voiceJSON.length) {
+  const batch = voiceJSON.splice(0, 64)
+  await Promise.all(batch.map(readVoiceJSON))
 }
 
 console.log('Reading GenshinData/BinOutput/Talk...')
 
 const talkJSON = await findJSON('GenshinData/BinOutput/Talk')
-for (const filePath of talkJSON) {
-  await readTalkJSON(filePath)
+while (talkJSON.length) {
+  const batch = talkJSON.splice(0, 64)
+  await Promise.all(batch.map(readTalkJSON))
 }
 
 console.log('Reading GenshinData/TextMap...')
@@ -215,13 +207,27 @@ const hfReadme = await readFile('genshin-voice/README.md', 'utf-8')
 const updatedHFReadme = hfReadme.replace(/<!-- STATS -->[\s\S]*<!-- STATS_END -->/, stats)
 await writeFile('genshin-voice/README.md', updatedHFReadme)
 
-console.log('Copying files to repository...')
+console.log('Removing old dataset...')
+
+await rm(WAV_DESTINATION, { recursive: true, force: true })
+
+console.log('Creating directories...')
+
+const dirs = new Set<string>()
+for (const wav of Object.keys(voiceMap)) {
+  dirs.add(subDirs(wav))
+}
+
+for (const dir of dirs) {
+  await mkdir(join(WAV_DESTINATION, dir), { recursive: true })
+}
+
+console.log('Copying files to dataset...')
 
 const copyPromise = []
-for (const wav of await readdir(WAV_PATH)) {
-  if (extname(wav) === '.wav') {
-    copyPromise.push(copyFile(join(WAV_PATH, wav), join(WAV_DESTINATION, wav)))
-  }
+for (const wav of await findFiles(WAV_PATH, '.wav')) {
+  const filename = basename(wav)
+  copyPromise.push(copyFile(wav, join(WAV_DESTINATION, subDirs(filename), filename)))
 }
 
 await Promise.all(copyPromise)
@@ -231,7 +237,7 @@ await copyFile('result.json', 'genshin-voice/result.json')
 const metadata = Object.entries(voiceMap)
   .map(([wav, { text: transcription, language, talkRole: speaker, talkRoleType: speaker_type }]) => {
     return JSON.stringify({
-      file_name: `wavs/${wav}`,
+      file_name: `wavs/${subDirs(wav)}/${wav}`,
       transcription,
       language,
       speaker,

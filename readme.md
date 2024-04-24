@@ -3,13 +3,13 @@
 Genshin Impact voice lines dataset.
 
 <!-- STATS -->
-Last update at `2024-04-23`
+Last update at `2024-04-24`
 
-`361668` wavs
+`413429` wavs
 
-`361224` without speaker
+`412977` without speaker
 
-`51699` without transcription
+`53395` without transcription
 
 `720` without file_name
 <!-- STATS_END -->
