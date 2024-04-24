@@ -1,9 +1,11 @@
-# Genshin-Voice
+# Genshin Voice
 
-Genshin Impact voice lines dataset.
+Genshin Voice is a dataset of voice lines from the popular game [Genshin Impact](https://genshin.hoyoverse.com/).
+
+Hugging Face 🤗  [Genshin-Voice](https://huggingface.co/datasets/simon3000/genshin-voice)
 
 <!-- STATS -->
-Last update at `2024-04-24`
+Last update at `2024-04-25`
 
 `413429` wavs
 
@@ -14,7 +16,17 @@ Last update at `2024-04-24`
 `720` without file_name
 <!-- STATS_END -->
 
-Hugging Face 🤗 Datasets: [Genshin-Voice](https://huggingface.co/datasets/simon3000/genshin-voice)
+## Dataset Details
+
+### Dataset Description
+
+The dataset contains voice lines from the game's characters in multiple languages, including Chinese, English, Japanese, and Korean.
+
+The voice lines are spoken by the characters in the game and cover a wide range of topics, including greetings, combat, and story dialogue.
+
+- **Language(s) (NLP):** Chinese, English, Japanese, Korean
+
+## Uses
 
 result.json format:
 
@@ -33,32 +45,36 @@ result.json format:
 }
 ```
 
-How to extract: Please refer to [w4123/GenshinVoice](https://github.com/w4123/GenshinVoice)
+## Dataset Creation
 
----
+### Source Data
 
-Rest of the readme was taken from [w4123/GenshinVoice](https://github.com/w4123/GenshinVoice)
+The data was obtained by unpacking the [Genshin Impact](https://genshin.hoyoverse.com/) game.
 
-不包含任何测试版/泄露版信息。
+#### Data Collection and Processing
 
-This repo contains no info regarding leak/beta versions.
+Please refer to [Genshin-Voice](https://github.com/simon300000/genshin-voice) and [w4123/GenshinVoice](https://github.com/w4123/GenshinVoice) for more information on how the data was processed.
 
-请注意所有音频版权属于米哈游，此处分享仅做学习用途。
+#### Who are the source data producers?
 
-Please note that all copyrights belong to Mihoyo/Hoyoverse. These files are only shared here for educational purposes.
+The source data producers are the developers of the game, miHoYo.
 
-使用这些文件的所有后果将由使用者承担，溯洄不负任何责任。
+### Annotations
 
-The user of these files bears all consequences for using these file. The repo maintainer bears no responsibility.
+The dataset contains official annotations from the game, including language, speaker name, and transcription.
 
-请勿在无米哈游书面授权的情况下将它们用于商业用途。
+## Bias, Risks, and Limitations
 
-Please do not use these files for commercial purposes without a prior written consent from Mihoyo/Hoyoverse.
+Annotations are incomplete. Some voice lines are missing speaker names and transcriptions.
 
-如果你在自己的视频/项目等中使用了这些文件，推荐注明文件来源以及整理者。
+### Recommendations
 
-If you use these files in your own project/video etc., it would be appreciated if you credit the repo maintainer.
+Users should be made aware of the risks, biases and limitations of the dataset.
 
-PS: 如果米哈游希望删除此repo，可以在Issues中联系我。
+## Licensing Information
 
-PS: If Mihoyo/Hoyoverse wishes this repo to be deleted, please contact me via Issues.
+Copyright © COGNOSPHERE. All Rights Reserved.
+
+## More Information
+
+I can upload wav files on demand.

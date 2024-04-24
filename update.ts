@@ -14,7 +14,7 @@ const LANGUAGES = Object.keys(TEXT_MAP_MAP) as Array<keyof typeof TEXT_MAP_MAP>
 const TEXTMAPS = Object.values(TEXT_MAP_MAP) as Array<typeof TEXT_MAP_MAP[typeof LANGUAGES[number]]>
 
 const WAV_PATH = 'result/wav'
-const WAV_DESTINATION = 'genshin-voice/wavs'
+const WAV_DESTINATION = 'genshin-voice-wav/wavs'
 
 const voiceMap = {} as Record<string, Voice>
 const dialogMap = new Map<number, Dialog>()
@@ -203,10 +203,6 @@ const readme = await readFile('readme.md', 'utf-8')
 const updatedReadme = readme.replace(/<!-- STATS -->[\s\S]*<!-- STATS_END -->/, stats)
 await writeFile('readme.md', updatedReadme)
 
-const hfReadme = await readFile('genshin-voice/README.md', 'utf-8')
-const updatedHFReadme = hfReadme.replace(/<!-- STATS -->[\s\S]*<!-- STATS_END -->/, stats)
-await writeFile('genshin-voice/README.md', updatedHFReadme)
-
 console.log('Removing old dataset...')
 
 await rm(WAV_DESTINATION, { recursive: true, force: true })
@@ -232,8 +228,6 @@ for (const wav of await findFiles(WAV_PATH, '.wav')) {
 
 await Promise.all(copyPromise)
 
-await copyFile('result.json', 'genshin-voice/result.json')
-
 const metadata = Object.entries(voiceMap)
   .map(([wav, { text: transcription, language, talkRole: speaker, talkRoleType: speaker_type }]) => {
     return JSON.stringify({
@@ -246,7 +240,20 @@ const metadata = Object.entries(voiceMap)
   })
   .join('\n')
 
-await writeFile('genshin-voice/metadata.jsonl', metadata)
+await writeFile('genshin-voice-wav/metadata.jsonl', metadata)
+const huggingfaceMetadata = `---
+task_categories:
+- audio-classification
+- automatic-speech-recognition
+- text-to-speech
+language:
+- zh
+- en
+- ja
+- ko
+pretty_name: Genshin Voice
+---`
+await writeFile('genshin-voice-wav/README.md', `${huggingfaceMetadata}\n\n${updatedReadme}`)
 
 type Voice = {
   fileName: string
