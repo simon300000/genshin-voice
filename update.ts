@@ -21,13 +21,29 @@ const dialogMap = new Map<number, Dialog>()
 const textMaps = Object.fromEntries(Object.values(TEXT_MAP_MAP).map(l => [l, {}])) as Record<typeof TEXTMAPS[number], TextMap>
 const npcNameHashMap = new Map<number, number>()
 
+const convertOldVoice = (oldVoice: OldVoice | GoodVoice): GoodVoice => {
+  if ('guid' in oldVoice) {
+    return oldVoice
+  } else if ('Guid' in oldVoice) {
+    const { Guid, GameTrigger, ParentID, SourceNames, ...rest } = oldVoice
+    return {
+      guid: Guid,
+      gameTrigger: GameTrigger,
+      parentID: ParentID,
+      sourceNames: SourceNames,
+      ...rest
+    }
+  }
+  return oldVoice
+}
+
 const readVoiceJSON = async (filePath: string) => {
   const content = await readFile(filePath, 'utf-8')
   const json = JSON.parse(content) as VoiceMap
-  for (const voice of Object.values(json)) {
-    if ('SourceNames' in voice) {
-      const { Guid: guid, GameTrigger: gameTrigger, gameTriggerArgs, SourceNames } = voice
-      for (const { sourceFileName } of SourceNames) {
+  for (const voice of Object.values(json).map(convertOldVoice)) {
+    if ('sourceNames' in voice) {
+      const { guid, gameTrigger, gameTriggerArgs, sourceNames = [] } = voice
+      for (const { sourceFileName } of sourceNames) {
         for (const language of LANGUAGES) {
           const fileName = `${language}\\${sourceFileName}`
           const hash = encodeFNV64(fileName)
@@ -237,19 +253,31 @@ type Voice = {
   gameTriggerArgs: number
 }
 
-type GoodVoice = {
+type VoiceSource = {
+  sourceFileName: string
+  rate: number
+  avatarName: string
+  emotion: string
+}
+
+type OldVoice = {
   Guid: string
   playRate: number
   GameTrigger: string
   gameTriggerArgs: number
   personalConfig: number
   ParentID: string
-  SourceNames: {
-    sourceFileName: string
-    rate: number
-    avatarName: string
-    emotion: string
-  }[]
+  SourceNames?: VoiceSource[]
+}
+
+type GoodVoice = {
+  guid: string
+  playRate: number
+  gameTrigger: string
+  gameTriggerArgs: number
+  personalConfig: number
+  parentID: string
+  sourceNames?: VoiceSource[]
 }
 
 type Dialog = {
@@ -276,7 +304,7 @@ type Talk = {
 
 type TextMap = Record<string, string>
 
-type VoiceMap = Record<string, GoodVoice>
+type VoiceMap = Record<string, OldVoice | GoodVoice>
 
 type NPC = {
   jsonName: string
