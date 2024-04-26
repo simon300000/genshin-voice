@@ -1,7 +1,7 @@
 import { join, basename } from 'path'
 import { readFile, writeFile, copyFile, mkdir, rm } from 'fs/promises'
 
-import { encodeFNV64, findFiles } from './hoyo-voice-extractor/index.js'
+import { encodeFNV64, findJSON, findWAV, readJSON, readJSONs } from './hoyo-voice-extractor/index.js'
 
 const TEXT_MAP_MAP = {
   'Chinese': 'TextMapCHS.json',
@@ -37,10 +37,8 @@ const convertOldVoice = (oldVoice: OldVoice | GoodVoice): GoodVoice => {
   return oldVoice
 }
 
-const readVoiceJSON = async (filePath: string) => {
-  const content = await readFile(filePath, 'utf-8')
-  const json = JSON.parse(content) as VoiceMap
-  for (const voice of Object.values(json).map(convertOldVoice)) {
+const readVoiceMap = async (maps: VoiceMap) => {
+  for (const voice of Object.values(maps).map(convertOldVoice)) {
     if ('sourceNames' in voice) {
       const { guid, gameTrigger, gameTriggerArgs, sourceNames = [] } = voice
       for (const { sourceFileName } of sourceNames) {
@@ -57,11 +55,9 @@ const readVoiceJSON = async (filePath: string) => {
   }
 }
 
-const readTalkJSON = async (filePath: string) => {
-  const content = await readFile(filePath, 'utf-8')
-  const json = JSON.parse(content) as Talk | {}
-  if ('dialogList' in json) {
-    const { dialogList } = json
+const readTalk = async (talk: Talk|{}) => {
+  if ('dialogList' in talk) {
+    const { dialogList } = talk
     for (const { id, ...dialog } of dialogList) {
       dialogMap.set(id, { id, ...dialog })
     }
@@ -69,21 +65,17 @@ const readTalkJSON = async (filePath: string) => {
 }
 
 const readTextMap = async (map: typeof TEXTMAPS[number]) => {
-  const content = await readFile(join('GenshinData', 'TextMap', map), 'utf-8')
-  const json = JSON.parse(content) as TextMap
-  textMaps[map] = json
+  const content = await readJSON<TextMap>(join('GenshinData', 'TextMap', map))
+  textMaps[map] = content
 }
 
 const readNPCJSON = async (filePath: string) => {
-  const content = await readFile(filePath, 'utf-8')
-  const json = JSON.parse(content) as NPCConfig
+  const json = await readJSON<NPCConfig>(filePath)
   for (const npc of json) {
     const { nameTextMapHash, id } = npc
     npcNameHashMap.set(id, nameTextMapHash)
   }
 }
-
-const findJSON = async (path: string) => findFiles(path, '.json')
 
 const subDirs = (wav: string) => {
   const name = wav.split('.').join('')
@@ -92,7 +84,7 @@ const subDirs = (wav: string) => {
 
 console.log('Reading result/wav...')
 
-for (const wav of await findFiles(WAV_PATH, '.wav')) {
+for (const wav of await findWAV(WAV_PATH)) {
   voiceMap[basename(wav)] = {
     fileName: '',
     language: '',
@@ -110,18 +102,14 @@ console.log(Object.keys(voiceMap).length, 'wavs found')
 console.log('Reading GenshinData/BinOutput/Voice...')
 
 const voiceJSON = await findJSON('GenshinData/BinOutput/Voice')
-while (voiceJSON.length) {
-  const batch = voiceJSON.splice(0, 64)
-  await Promise.all(batch.map(readVoiceJSON))
-}
+const voiceMaps = await readJSONs<VoiceMap>(voiceJSON)
+voiceMaps.forEach(readVoiceMap)
 
 console.log('Reading GenshinData/BinOutput/Talk...')
 
 const talkJSON = await findJSON('GenshinData/BinOutput/Talk')
-while (talkJSON.length) {
-  const batch = talkJSON.splice(0, 64)
-  await Promise.all(batch.map(readTalkJSON))
-}
+const talks = await readJSONs<Talk | {}>(talkJSON)
+talks.forEach(readTalk)
 
 console.log('Reading GenshinData/TextMap...')
 
@@ -221,7 +209,7 @@ for (const dir of dirs) {
 console.log('Copying files to dataset...')
 
 const copyPromise = []
-for (const wav of await findFiles(WAV_PATH, '.wav')) {
+for (const wav of await findWAV(WAV_PATH)) {
   const filename = basename(wav)
   copyPromise.push(copyFile(wav, join(WAV_DESTINATION, subDirs(filename), filename)))
 }
