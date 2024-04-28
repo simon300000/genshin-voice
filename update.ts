@@ -124,7 +124,7 @@ for (const voice of Object.values(voiceMap)) {
   if (!dialog) {
     continue
   }
-  const { talkContentTextMapHash: hash, talkRole: { type, id, _id } } = dialog
+  const { talkContentTextMapHash: hash, talkRole: { type, id, _id }, talkRoleNameTextMapHash } = dialog
   const talkRoleID = id || _id || ''
   if (hash) {
     const text = textMaps[language][hash]
@@ -132,12 +132,15 @@ for (const voice of Object.values(voiceMap)) {
       voice.transcription = text
     }
   }
+  if (talkRoleNameTextMapHash) {
+    voice.speaker = textMaps['English(US)'][talkRoleNameTextMapHash] || voice.speaker
+  }
   if (type) {
     voice.talkRoleType = type
     if (type === 'TALK_ROLE_NPC') {
       const npc = npcNameHashMap.get(talkRoleID)
       if (npc) {
-        voice.speaker = textMaps['English(US)'][npc] || ''
+        voice.speaker = textMaps['English(US)'][npc] || voice.speaker
       }
     }
   }
@@ -250,6 +253,7 @@ type Dialog = {
     id?: string
   }
   talkContentTextMapHash: number
+  talkRoleNameTextMapHash?: number
   talkAssetPath: string
   talkAssetPathAlter: string
   talkAudioName: string

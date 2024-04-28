@@ -9,7 +9,7 @@ Last update at `2024-04-28`
 
 `413429` wavs
 
-`54046` without speaker (13%)
+`53694` without speaker (13%)
 
 `53395` without transcription (13%)
 
