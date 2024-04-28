@@ -1,7 +1,7 @@
 import { join, basename } from 'path'
-import { readFile, writeFile, copyFile, mkdir, rm } from 'fs/promises'
+import { writeFile, copyFile, mkdir, rm } from 'fs/promises'
 
-import { encodeFNV64, findJSON, findWAV, readJSON, readJSONs } from './hoyo-voice-extractor/index.js'
+import { encodeFNV64, findJSON, findWAV, readJSON, readJSONs, readTextMap, updateStats, copyReadme } from './hoyo-voice-extractor/index.js'
 
 const TEXT_MAP_MAP = {
   'Chinese': 'TextMapCHS.json',
@@ -11,14 +11,12 @@ const TEXT_MAP_MAP = {
 } as const
 
 const LANGUAGES = Object.keys(TEXT_MAP_MAP) as Array<keyof typeof TEXT_MAP_MAP>
-const TEXTMAPS = Object.values(TEXT_MAP_MAP) as Array<typeof TEXT_MAP_MAP[typeof LANGUAGES[number]]>
 
 const WAV_PATH = 'result/wav'
 const WAV_DESTINATION = 'genshin-voice-wav/wavs'
 
 const voiceMap = {} as Record<string, Voice>
 const dialogMap = new Map<number, Dialog>()
-const textMaps = Object.fromEntries(Object.values(TEXT_MAP_MAP).map(l => [l, {}])) as Record<typeof TEXTMAPS[number], TextMap>
 const npcNameHashMap = new Map<number, number>()
 
 const convertOldVoice = (oldVoice: OldVoice | GoodVoice): GoodVoice => {
@@ -47,7 +45,7 @@ const readVoiceMap = async (maps: VoiceMap) => {
           const hash = encodeFNV64(fileName)
           const wavName = `${hash}.wav`
           if (voiceMap[wavName]) {
-            voiceMap[wavName] = { fileName: sourceFileName, language, text: '', talkRole: '', talkRoleType: '', guid, gameTrigger, gameTriggerArgs }
+            voiceMap[wavName] = { inGameFilename: sourceFileName, language, transcription: '', speaker: '', talkRoleType: '', guid, gameTrigger, gameTriggerArgs }
           }
         }
       }
@@ -55,18 +53,13 @@ const readVoiceMap = async (maps: VoiceMap) => {
   }
 }
 
-const readTalk = async (talk: Talk|{}) => {
+const readTalk = async (talk: Talk | {}) => {
   if ('dialogList' in talk) {
     const { dialogList } = talk
     for (const { id, ...dialog } of dialogList) {
       dialogMap.set(id, { id, ...dialog })
     }
   }
-}
-
-const readTextMap = async (map: typeof TEXTMAPS[number]) => {
-  const content = await readJSON<TextMap>(join('GenshinData', 'TextMap', map))
-  textMaps[map] = content
 }
 
 const readNPCJSON = async (filePath: string) => {
@@ -86,10 +79,10 @@ console.log('Reading result/wav...')
 
 for (const wav of await findWAV(WAV_PATH)) {
   voiceMap[basename(wav)] = {
-    fileName: '',
+    inGameFilename: '',
     language: '',
-    text: '',
-    talkRole: '',
+    transcription: '',
+    speaker: '',
     talkRoleType: '',
     guid: '',
     gameTrigger: '',
@@ -112,10 +105,7 @@ const talks = await readJSONs<Talk | {}>(talkJSON)
 talks.forEach(readTalk)
 
 console.log('Reading GenshinData/TextMap...')
-
-for (const map of TEXTMAPS) {
-  await readTextMap(map)
-}
+const textMaps = await readTextMap('GenshinData', TEXT_MAP_MAP)
 
 console.log('Reading NpcExcelConfigData...')
 
@@ -134,9 +124,9 @@ for (const voice of Object.values(voiceMap)) {
   }
   const { talkContentTextMapHash: hash, talkRole: { type } } = dialog
   if (hash) {
-    const text = textMaps[TEXT_MAP_MAP[language]][hash]
+    const text = textMaps[language][hash]
     if (text !== undefined) {
-      voice.text = text
+      voice.transcription = text
     }
   }
   if (type) {
@@ -144,8 +134,8 @@ for (const voice of Object.values(voiceMap)) {
     if (type === 'TALK_ROLE_NPC') {
       const npc = npcNameHashMap.get(gameTriggerArgs)
       if (npc) {
-        const text = textMaps['TextMapEN.json'][npc]
-        voice.talkRole = text || ''
+        const text = textMaps['English(US)'][npc]
+        voice.speaker = text || ''
       }
     }
   }
@@ -155,41 +145,7 @@ console.log('Writing result.json')
 
 await writeFile('result.json', JSON.stringify(voiceMap))
 
-let noRole = 0
-let noText = 0
-let noFileName = 0
-
-for (const voice of Object.values(voiceMap)) {
-  if (!voice.talkRole) {
-    noRole++
-  }
-  if (!voice.text) {
-    noText++
-  }
-  if (!voice.fileName) {
-    noFileName++
-  }
-}
-
-const currentDate = new Date().toISOString().replace(/T.*/, '')
-
-const stats = `<!-- STATS -->
-Last update at \`${currentDate}\`
-
-\`${Object.keys(voiceMap).length}\` wavs
-
-\`${noRole}\` without speaker
-
-\`${noText}\` without transcription
-
-\`${noFileName}\` without file_name
-<!-- STATS_END -->`
-
-console.log(stats)
-
-const readme = await readFile('readme.md', 'utf-8')
-const updatedReadme = readme.replace(/<!-- STATS -->[\s\S]*<!-- STATS_END -->/, stats)
-await writeFile('readme.md', updatedReadme)
+await updateStats(voiceMap, 'readme.md')
 
 console.log('Removing old dataset...')
 
@@ -217,7 +173,7 @@ for (const wav of await findWAV(WAV_PATH)) {
 await Promise.all(copyPromise)
 
 const metadata = Object.entries(voiceMap)
-  .map(([wav, { text: transcription, language, talkRole: speaker, talkRoleType: speaker_type }]) => {
+  .map(([wav, { transcription, language, speaker, talkRoleType: speaker_type }]) => {
     return JSON.stringify({
       file_name: `wavs/${subDirs(wav)}/${wav}`,
       transcription,
@@ -241,13 +197,14 @@ language:
 - ko
 pretty_name: Genshin Voice
 ---`
-await writeFile('genshin-voice-wav/README.md', `${huggingfaceMetadata}\n\n${updatedReadme}`)
+
+await copyReadme('readme.md', 'genshin-voice-wav/README.md', huggingfaceMetadata)
 
 type Voice = {
-  fileName: string
+  inGameFilename: string
   language: typeof LANGUAGES[number] | ''
-  text: string
-  talkRole: string
+  transcription: string
+  speaker: string
   talkRoleType: string
   guid: string
   gameTrigger: string
@@ -302,8 +259,6 @@ type Talk = {
   talkId: number
   dialogList: Dialog[]
 }
-
-type TextMap = Record<string, string>
 
 type VoiceMap = Record<string, OldVoice | GoodVoice>
 
