@@ -17,7 +17,7 @@ const WAV_DESTINATION = 'genshin-voice-wav/wavs'
 
 const voiceMap = {} as Record<string, Voice>
 const dialogMap = new Map<number, Dialog>()
-const npcNameHashMap = new Map<number, number>()
+const npcNameHashMap = new Map<string, number>()
 
 const convertOldVoice = (oldVoice: OldVoice | GoodVoice): GoodVoice => {
   if ('guid' in oldVoice) {
@@ -44,8 +44,9 @@ const readVoiceMap = async (maps: VoiceMap) => {
           const fileName = `${language}\\${sourceFileName}`
           const hash = encodeFNV64(fileName)
           const wavName = `${hash}.wav`
-          if (voiceMap[wavName]) {
-            voiceMap[wavName] = { inGameFilename: sourceFileName, language, transcription: '', speaker: '', talkRoleType: '', guid, gameTrigger, gameTriggerArgs }
+          const voiceData = voiceMap[wavName]
+          if (voiceData) {
+            voiceMap[wavName] = { ...voiceData, inGameFilename: sourceFileName, language, guid, gameTrigger, gameTriggerArgs }
           }
         }
       }
@@ -66,7 +67,7 @@ const readNPCJSON = async (filePath: string) => {
   const json = await readJSON<NPCConfig>(filePath)
   for (const npc of json) {
     const { nameTextMapHash, id } = npc
-    npcNameHashMap.set(id, nameTextMapHash)
+    npcNameHashMap.set(String(id), nameTextMapHash)
   }
 }
 
@@ -84,6 +85,7 @@ for (const wav of await findWAV(WAV_PATH)) {
     transcription: '',
     speaker: '',
     talkRoleType: '',
+    talkRoleID: '',
     guid: '',
     gameTrigger: '',
     gameTriggerArgs: 0
@@ -122,7 +124,8 @@ for (const voice of Object.values(voiceMap)) {
   if (!dialog) {
     continue
   }
-  const { talkContentTextMapHash: hash, talkRole: { type } } = dialog
+  const { talkContentTextMapHash: hash, talkRole: { type, id, _id } } = dialog
+  const talkRoleID = id || _id || ''
   if (hash) {
     const text = textMaps[language][hash]
     if (text !== undefined) {
@@ -132,10 +135,9 @@ for (const voice of Object.values(voiceMap)) {
   if (type) {
     voice.talkRoleType = type
     if (type === 'TALK_ROLE_NPC') {
-      const npc = npcNameHashMap.get(gameTriggerArgs)
+      const npc = npcNameHashMap.get(talkRoleID)
       if (npc) {
-        const text = textMaps['English(US)'][npc]
-        voice.speaker = text || ''
+        voice.speaker = textMaps['English(US)'][npc] || ''
       }
     }
   }
@@ -206,6 +208,7 @@ type Voice = {
   transcription: string
   speaker: string
   talkRoleType: string
+  talkRoleID: string
   guid: string
   gameTrigger: string
   gameTriggerArgs: number
@@ -243,7 +246,8 @@ type Dialog = {
   nextDialogs: number[]
   talkRole: {
     type: 'TALK_ROLE_NPC'
-    id: string
+    _id?: string
+    id?: string
   }
   talkContentTextMapHash: number
   talkAssetPath: string
