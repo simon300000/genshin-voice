@@ -141,6 +141,10 @@ console.log('Reading GenshinData/ExcelBinOutput/GCGCharExcelConfigData.json')
 const GCGCharExcelConfigData = await readJSON<GCGCharExcelConfigData>('GenshinData/ExcelBinOutput/GCGCharExcelConfigData.json')
 const GCGCharNameHashMap = Object.fromEntries(GCGCharExcelConfigData.filter(({ voiceSwitch }) => voiceSwitch).map(({ voiceSwitch, nameTextMapHash }) => [voiceSwitch.toLowerCase(), nameTextMapHash]))
 
+console.log('Reading GenshinData/ExcelBinOutput/ReminderExcelConfigData.json')
+const reminderExcelConfigData = await readJSON<ReminderExcelConfigData>('GenshinData/ExcelBinOutput/ReminderExcelConfigData.json')
+const reminderTextHashMap = Object.fromEntries(reminderExcelConfigData.map(({ id, speakerTextMapHash, contentTextMapHash }) => [id, { speakerTextMapHash, contentTextMapHash }]))
+
 console.log('Matching...')
 
 for (const voice of Object.values(voiceMap)) {
@@ -207,6 +211,20 @@ for (const voice of Object.values(voiceMap)) {
         const name = textMaps['English(US)'][nameHash]
         if (name) {
           voice.speaker = name
+        }
+      }
+    }
+    if (gameTrigger === 'DungeonReminder') {
+      const reminder = reminderTextHashMap[gameTriggerArgs]
+      if (reminder) {
+        const { speakerTextMapHash, contentTextMapHash } = reminder
+        const speaker = textMaps['English(US)'][speakerTextMapHash]
+        const content = textMaps[language][contentTextMapHash]
+        if (speaker) {
+          voice.speaker = speaker
+        }
+        if (content) {
+          voice.transcription = content
         }
       }
     }
@@ -279,7 +297,7 @@ pretty_name: Genshin Voice
 
 await copyReadme('readme.md', 'genshin-voice-wav/README.md', huggingfaceMetadata)
 
-type GameTrigger = 'Fetter' | 'Dialog' | 'Card'
+type GameTrigger = 'Fetter' | 'Dialog' | 'Card' | 'DungeonReminder'
 
 type VoiceConfig = {
   gameTrigger: GameTrigger
@@ -403,4 +421,10 @@ type GCGTalkDetailExcelConfigData = {
 type GCGCharExcelConfigData = {
   voiceSwitch: string
   nameTextMapHash: number
+}[]
+
+type ReminderExcelConfigData = {
+  id: number
+  speakerTextMapHash: number
+  contentTextMapHash: number
 }[]

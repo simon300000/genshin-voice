@@ -9,9 +9,9 @@ Last update at `2024-04-29`
 
 `413429` wavs
 
-`23003` without speaker (6%)
+`18016` without speaker (4%)
 
-`28371` without transcription (7%)
+`23348` without transcription (6%)
 
 `720` without inGameFilename (0%)
 <!-- STATS_END -->
