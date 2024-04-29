@@ -121,6 +121,7 @@ console.log('Reading AvatarExcelConfigData.json')
 const avatarExcelConfigData = await readJSON<AvatarExcelConfig>('GenshinData/ExcelBinOutput/AvatarExcelConfigData.json')
 const avatarExcelConfig = Object.fromEntries(avatarExcelConfigData.filter(({ useType }) => useType === 'AVATAR_FORMAL').map(({ id, nameTextMapHash, iconName }) => [iconName.replace('UI_AvatarIcon', 'ConfigAvatar'), { id, nameTextMapHash }]))
 const avatarConfigKeys = Object.keys(avatarExcelConfig)
+const avatarIdNameHashMap = Object.fromEntries(Object.values(avatarExcelConfig).map(({ id, nameTextMapHash }) => [id, nameTextMapHash]))
 
 console.log('Reading GenshinData/BinOutput/Avatar...')
 
@@ -131,6 +132,14 @@ console.log('Reading GenshinData/ExcelBinOutput/FettersExcelConfigData.json')
 
 const fettersExcelConfigData = await readJSON<FettersExcelConfig>('GenshinData/ExcelBinOutput/FettersExcelConfigData.json')
 const fettersTextHashMap = Object.fromEntries(fettersExcelConfigData.map(({ voiceFile, avatarId, voiceFileTextTextMapHash }) => [`${voiceFile}_${avatarId}`, { voiceFileTextTextMapHash }]))
+
+console.log('Reading GenshinData/ExcelBinOutput/GCGTalkDetailExcelConfigData.json')
+const GCGTalkDetailExcelConfigData = await readJSON<GCGTalkDetailExcelConfigData>('GenshinData/ExcelBinOutput/GCGTalkDetailExcelConfigData.json')
+const GCGTalkDetailExcelConfig = Object.fromEntries(GCGTalkDetailExcelConfigData.flatMap(({ talkContent, talkVoiceId, talkCharacterId }) => talkVoiceId.filter(id => id !== 0).map((talkVoiceId, i) => [talkVoiceId, { talkContent: talkContent[i], talkCharacterId: talkCharacterId[i] }])))
+
+console.log('Reading GenshinData/ExcelBinOutput/GCGCharExcelConfigData.json')
+const GCGCharExcelConfigData = await readJSON<GCGCharExcelConfigData>('GenshinData/ExcelBinOutput/GCGCharExcelConfigData.json')
+const GCGCharNameHashMap = Object.fromEntries(GCGCharExcelConfigData.filter(({ voiceSwitch }) => voiceSwitch).map(({ voiceSwitch, nameTextMapHash }) => [voiceSwitch.toLowerCase(), nameTextMapHash]))
 
 console.log('Matching...')
 
@@ -161,7 +170,8 @@ for (const voice of Object.values(voiceMap)) {
         if (type === 'TALK_ROLE_NPC') {
           const npc = npcNameHashMap.get(talkRoleID)
           if (npc) {
-            voice.speaker = textMaps['English(US)'][npc] || voice.speaker
+            const newSpeaker = textMaps['English(US)'][npc]
+            voice.speaker = newSpeaker || voice.speaker
           }
         }
       }
@@ -178,6 +188,26 @@ for (const voice of Object.values(voiceMap)) {
         const hash = fetterTextHash.voiceFileTextTextMapHash
         const text = textMaps[language][hash]
         voice.transcription = text
+      }
+    }
+    if (gameTrigger === 'Card') {
+      if (avatarName) {
+        const charNameHash = GCGCharNameHashMap[avatarName.toLowerCase()] || avatarConfigMap[avatarName.toLowerCase()] && avatarExcelConfig[avatarConfigMap[avatarName.toLowerCase()]].nameTextMapHash
+        const charName = textMaps['English(US)'][charNameHash]
+        if (charName) {
+          voice.speaker = charName
+        }
+      }
+      const talk = GCGTalkDetailExcelConfig[gameTriggerArgs]
+      if (talk) {
+        const { talkContent, talkCharacterId } = talk
+        const text = textMaps[language][talkContent]
+        voice.transcription = text
+        const nameHash = avatarIdNameHashMap[talkCharacterId]
+        const name = textMaps['English(US)'][nameHash]
+        if (name) {
+          voice.speaker = name
+        }
       }
     }
   }
@@ -215,7 +245,8 @@ for (const wav of await findWAV(WAV_PATH)) {
 await Promise.all(copyPromise)
 
 const metadata = Object.entries(voiceMap)
-  .map(([wav, { transcription, language, speaker, talkRoleType: speaker_type, voiceConfigs: [{ gameTrigger = '' } = {}], inGameFilename }]) => {
+  .map(([wav, { transcription, language, speaker, talkRoleType: speaker_type, voiceConfigs, inGameFilename }]) => {
+    const [{ gameTrigger = '' } = {}] = voiceConfigs
     return JSON.stringify({
       file_name: `wavs/${subDirs(wav)}/${wav}`,
       transcription,
@@ -223,7 +254,8 @@ const metadata = Object.entries(voiceMap)
       speaker,
       speaker_type,
       gameTrigger,
-      inGameFilename
+      inGameFilename,
+      voiceConfigs
     })
   })
   .sort()
@@ -358,4 +390,17 @@ type FettersExcelConfig = {
   voiceFile: string
   avatarId: number
   voiceFileTextTextMapHash: number
+}[]
+
+type GCGTalkDetailExcelConfigData = {
+  talkDetailId: number
+  talkContent: number[]
+  talkVoiceId: number[]
+  talkCharacterId: number[]
+  talkEmoji: string[]
+}[]
+
+type GCGCharExcelConfigData = {
+  voiceSwitch: string
+  nameTextMapHash: number
 }[]
