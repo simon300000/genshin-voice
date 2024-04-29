@@ -46,7 +46,10 @@ const readVoiceMap = async (maps: VoiceMap) => {
           const wavName = `${hash}.wav`
           const voiceData = voiceMap[wavName]
           if (voiceData) {
-            voiceMap[wavName] = { ...voiceData, inGameFilename: sourceFileName, language, guid, gameTrigger, gameTriggerArgs, avatarName }
+            voiceData.inGameFilename = sourceFileName
+            voiceData.language = language
+            voiceData.guid = voiceData.guid || guid
+            voiceMap[wavName].voiceConfigs.push({ gameTrigger, gameTriggerArgs, avatarName })
           }
         }
       }
@@ -81,15 +84,14 @@ console.log('Reading result/wav...')
 for (const wav of await findWAV(WAV_PATH)) {
   voiceMap[basename(wav)] = {
     inGameFilename: '',
+    filename: basename(wav),
     language: '',
     transcription: '',
     speaker: '',
     talkRoleType: '',
     talkRoleID: '',
     guid: '',
-    gameTrigger: '',
-    gameTriggerArgs: 0,
-    avatarName: ''
+    voiceConfigs: []
   }
 }
 
@@ -133,49 +135,50 @@ const fettersTextHashMap = Object.fromEntries(fettersExcelConfigData.map(({ voic
 console.log('Matching...')
 
 for (const voice of Object.values(voiceMap)) {
-  const { gameTriggerArgs, language, gameTrigger } = voice
-  if (!language || !gameTriggerArgs) {
+  const { language, voiceConfigs } = voice
+  if (!language) {
     continue
   }
-  if (gameTrigger === 'Dialog') {
-    const dialog = dialogMap.get(gameTriggerArgs)
-    if (!dialog) {
-      continue
-    }
-    const { talkContentTextMapHash: hash, talkRole: { type, id, _id }, talkRoleNameTextMapHash } = dialog
-    const talkRoleID = id || _id || ''
-    if (hash) {
-      const text = textMaps[language][hash]
-      if (text !== undefined) {
-        voice.transcription = text
+  for (const { gameTrigger, gameTriggerArgs, avatarName } of voiceConfigs) {
+    if (gameTrigger === 'Dialog') {
+      const dialog = dialogMap.get(gameTriggerArgs)
+      if (!dialog) {
+        continue
       }
-    }
-    if (talkRoleNameTextMapHash) {
-      voice.speaker = textMaps['English(US)'][talkRoleNameTextMapHash] || voice.speaker
-    }
-    if (type) {
-      voice.talkRoleType = type
-      if (type === 'TALK_ROLE_NPC') {
-        const npc = npcNameHashMap.get(talkRoleID)
-        if (npc) {
-          voice.speaker = textMaps['English(US)'][npc] || voice.speaker
+      const { talkContentTextMapHash: hash, talkRole: { type, id, _id }, talkRoleNameTextMapHash } = dialog
+      const talkRoleID = id || _id || ''
+      if (hash) {
+        const text = textMaps[language][hash]
+        if (text !== undefined) {
+          voice.transcription = text
+        }
+      }
+      if (talkRoleNameTextMapHash) {
+        voice.speaker = textMaps['English(US)'][talkRoleNameTextMapHash] || voice.speaker
+      }
+      if (type) {
+        voice.talkRoleType = type
+        if (type === 'TALK_ROLE_NPC') {
+          const npc = npcNameHashMap.get(talkRoleID)
+          if (npc) {
+            voice.speaker = textMaps['English(US)'][npc] || voice.speaker
+          }
         }
       }
     }
-  }
-  if (gameTrigger === 'Fetter') {
-    const { avatarName } = voice
-    const avatar = avatarConfigMap[avatarName.toLowerCase()]
-    const { nameTextMapHash, id } = avatarExcelConfig[avatar]
-    const speaker = textMaps['English(US)'][nameTextMapHash]
-    if (speaker) {
-      voice.speaker = speaker
-    }
-    const fetterTextHash = fettersTextHashMap[`${gameTriggerArgs}_${id}`]
-    if (fetterTextHash) {
-      const hash = fetterTextHash.voiceFileTextTextMapHash
-      const text = textMaps[language][hash]
-      voice.transcription = text
+    if (gameTrigger === 'Fetter') {
+      const avatar = avatarConfigMap[avatarName.toLowerCase()]
+      const { nameTextMapHash, id } = avatarExcelConfig[avatar]
+      const speaker = textMaps['English(US)'][nameTextMapHash]
+      if (speaker) {
+        voice.speaker = speaker
+      }
+      const fetterTextHash = fettersTextHashMap[`${gameTriggerArgs}_${id}`]
+      if (fetterTextHash) {
+        const hash = fetterTextHash.voiceFileTextTextMapHash
+        const text = textMaps[language][hash]
+        voice.transcription = text
+      }
     }
   }
 }
@@ -212,7 +215,7 @@ for (const wav of await findWAV(WAV_PATH)) {
 await Promise.all(copyPromise)
 
 const metadata = Object.entries(voiceMap)
-  .map(([wav, { transcription, language, speaker, talkRoleType: speaker_type, gameTrigger, inGameFilename }]) => {
+  .map(([wav, { transcription, language, speaker, talkRoleType: speaker_type, voiceConfigs: [{ gameTrigger = '' } = {}], inGameFilename }]) => {
     return JSON.stringify({
       file_name: `wavs/${subDirs(wav)}/${wav}`,
       transcription,
@@ -223,9 +226,12 @@ const metadata = Object.entries(voiceMap)
       inGameFilename
     })
   })
+  .sort()
   .join('\n')
 
-await writeFile('genshin-voice-wav/metadata.jsonl', metadata)
+await writeFile('metadata.jsonl', metadata)
+await copyFile('metadata.jsonl', 'genshin-voice-wav/metadata.jsonl')
+
 const huggingfaceMetadata = `---
 task_categories:
 - audio-classification
@@ -243,17 +249,22 @@ await copyReadme('readme.md', 'genshin-voice-wav/README.md', huggingfaceMetadata
 
 type GameTrigger = 'Fetter' | 'Dialog' | 'Card'
 
+type VoiceConfig = {
+  gameTrigger: GameTrigger
+  gameTriggerArgs: number
+  avatarName: string
+}
+
 type Voice = {
   inGameFilename: string
+  filename: string
   language: typeof LANGUAGES[number] | ''
   transcription: string
   speaker: string
   talkRoleType: string
   talkRoleID: string
   guid: string
-  gameTrigger: GameTrigger | ''
-  gameTriggerArgs: number
-  avatarName: string
+  voiceConfigs: VoiceConfig[]
 }
 
 type VoiceSource = {
