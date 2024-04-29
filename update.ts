@@ -212,13 +212,15 @@ for (const wav of await findWAV(WAV_PATH)) {
 await Promise.all(copyPromise)
 
 const metadata = Object.entries(voiceMap)
-  .map(([wav, { transcription, language, speaker, talkRoleType: speaker_type }]) => {
+  .map(([wav, { transcription, language, speaker, talkRoleType: speaker_type, gameTrigger, inGameFilename }]) => {
     return JSON.stringify({
       file_name: `wavs/${subDirs(wav)}/${wav}`,
       transcription,
       language,
       speaker,
-      speaker_type
+      speaker_type,
+      gameTrigger,
+      inGameFilename
     })
   })
   .join('\n')

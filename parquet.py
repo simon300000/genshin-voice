@@ -33,6 +33,8 @@ dataset = Dataset.from_dict({
     "language": [voice['language'] for voice in voiceList],
     "speaker": [voice['speaker'] for voice in voiceList],
     "speaker_type": [voice['speaker_type'] for voice in voiceList],
+    "type": [voice['gameTrigger'] for voice in voiceList],
+    "inGameFilename": [voice['inGameFilename'] for voice in voiceList],
     }).cast_column("audio", Audio())
 
 print('Pushing dataset')
