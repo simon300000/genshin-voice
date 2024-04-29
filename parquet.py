@@ -39,4 +39,4 @@ dataset = Dataset.from_dict({
 
 print('Pushing dataset')
 
-dataset.push_to_hub("genshin-voice", max_shard_size="10GB")
+dataset.push_to_hub("genshin-voice", max_shard_size="5GB")
