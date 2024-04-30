@@ -5,13 +5,13 @@ Genshin Voice is a dataset of voice lines from the popular game [Genshin Impact]
 Hugging Face 🤗  [Genshin-Voice](https://huggingface.co/datasets/simon3000/genshin-voice)
 
 <!-- STATS -->
-Last update at `2024-04-29`
+Last update at `2024-04-30`
 
 `413429` wavs
 
 `18016` without speaker (4%)
 
-`23348` without transcription (6%)
+`22956` without transcription (6%)
 
 `720` without inGameFilename (0%)
 <!-- STATS_END -->

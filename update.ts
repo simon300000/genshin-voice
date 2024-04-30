@@ -134,12 +134,16 @@ const fettersExcelConfigData = await readJSON<FettersExcelConfig>('GenshinData/E
 const fettersTextHashMap = Object.fromEntries(fettersExcelConfigData.map(({ voiceFile, avatarId, voiceFileTextTextMapHash }) => [`${voiceFile}_${avatarId}`, { voiceFileTextTextMapHash }]))
 
 console.log('Reading GenshinData/ExcelBinOutput/GCGTalkDetailExcelConfigData.json')
-const GCGTalkDetailExcelConfigData = await readJSON<GCGTalkDetailExcelConfigData>('GenshinData/ExcelBinOutput/GCGTalkDetailExcelConfigData.json')
-const GCGTalkDetailExcelConfig = Object.fromEntries(GCGTalkDetailExcelConfigData.flatMap(({ talkContent, talkVoiceId, talkCharacterId }) => talkVoiceId.filter(id => id !== 0).map((talkVoiceId, i) => [talkVoiceId, { talkContent: talkContent[i], talkCharacterId: talkCharacterId[i] }])))
+const gcgTalkDetailExcelConfigData = await readJSON<GCGTalkDetailExcelConfigData>('GenshinData/ExcelBinOutput/GCGTalkDetailExcelConfigData.json')
+const gcgTalkDetailExcelConfig = Object.fromEntries(gcgTalkDetailExcelConfigData.flatMap(({ talkContent, talkVoiceId, talkCharacterId }) => talkVoiceId.filter(id => id !== 0).map((talkVoiceId, i) => [talkVoiceId, { talkContent: talkContent[i], talkCharacterId: talkCharacterId[i] }])))
 
 console.log('Reading GenshinData/ExcelBinOutput/GCGCharExcelConfigData.json')
-const GCGCharExcelConfigData = await readJSON<GCGCharExcelConfigData>('GenshinData/ExcelBinOutput/GCGCharExcelConfigData.json')
-const GCGCharNameHashMap = Object.fromEntries(GCGCharExcelConfigData.filter(({ voiceSwitch }) => voiceSwitch).map(({ voiceSwitch, nameTextMapHash }) => [voiceSwitch.toLowerCase(), nameTextMapHash]))
+const gcgCharExcelConfigData = await readJSON<GCGCharExcelConfigData>('GenshinData/ExcelBinOutput/GCGCharExcelConfigData.json')
+const gcgCharNameHashMap = Object.fromEntries(gcgCharExcelConfigData.filter(({ voiceSwitch }) => voiceSwitch).map(({ voiceSwitch, nameTextMapHash }) => [voiceSwitch.toLowerCase(), nameTextMapHash]))
+
+console.log('Reading GenshinData/ExcelBinOutput/GCGTutorialTextExcelConfigData.json')
+const gcgTutorialTextExcelConfigData = await readJSON<GCGTutorialTextExcelConfigData>('GenshinData/ExcelBinOutput/GCGTutorialTextExcelConfigData.json')
+const gcgTutorialTextHashMap = Object.fromEntries(gcgTutorialTextExcelConfigData.filter(({ voiceTriggerId }) => voiceTriggerId).map(({ voiceTriggerId, commentTextMapHash }) => [voiceTriggerId as number, commentTextMapHash]))
 
 console.log('Reading GenshinData/ExcelBinOutput/ReminderExcelConfigData.json')
 const reminderExcelConfigData = await readJSON<ReminderExcelConfigData>('GenshinData/ExcelBinOutput/ReminderExcelConfigData.json')
@@ -196,13 +200,13 @@ for (const voice of Object.values(voiceMap)) {
     }
     if (gameTrigger === 'Card') {
       if (avatarName) {
-        const charNameHash = GCGCharNameHashMap[avatarName.toLowerCase()] || avatarConfigMap[avatarName.toLowerCase()] && avatarExcelConfig[avatarConfigMap[avatarName.toLowerCase()]].nameTextMapHash
+        const charNameHash = gcgCharNameHashMap[avatarName.toLowerCase()] || avatarConfigMap[avatarName.toLowerCase()] && avatarExcelConfig[avatarConfigMap[avatarName.toLowerCase()]].nameTextMapHash
         const charName = textMaps['English(US)'][charNameHash]
         if (charName) {
           voice.speaker = charName
         }
       }
-      const talk = GCGTalkDetailExcelConfig[gameTriggerArgs]
+      const talk = gcgTalkDetailExcelConfig[gameTriggerArgs]
       if (talk) {
         const { talkContent, talkCharacterId } = talk
         const text = textMaps[language][talkContent]
@@ -211,6 +215,12 @@ for (const voice of Object.values(voiceMap)) {
         const name = textMaps['English(US)'][nameHash]
         if (name) {
           voice.speaker = name
+        }
+      } else {
+        const tutorialHash = gcgTutorialTextHashMap[gameTriggerArgs]
+        if (tutorialHash) {
+          const text = textMaps[language][tutorialHash]
+          voice.transcription = text || voice.transcription
         }
       }
     }
@@ -421,6 +431,12 @@ type GCGTalkDetailExcelConfigData = {
 type GCGCharExcelConfigData = {
   voiceSwitch: string
   nameTextMapHash: number
+}[]
+
+type GCGTutorialTextExcelConfigData = {
+  id: number
+  commentTextMapHash: number
+  voiceTriggerId?: number
 }[]
 
 type ReminderExcelConfigData = {
