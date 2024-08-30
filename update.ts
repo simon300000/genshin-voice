@@ -36,7 +36,8 @@ const convertOldVoice = (oldVoice: OldVoice | GoodVoice): GoodVoice => {
 }
 
 const readVoiceMap = async (maps: VoiceMap) => {
-  for (const voice of Object.values(maps).map(convertOldVoice)) {
+  const voiceMaps = Object.values(maps).filter(v => typeof v !== 'string') as (OldVoice | GoodVoice)[]
+  for (const voice of voiceMaps.map(convertOldVoice)) {
     if ('sourceNames' in voice) {
       const { guid, gameTrigger, gameTriggerArgs, sourceNames = [] } = voice
       for (const { sourceFileName, avatarName } of sourceNames) {
@@ -332,6 +333,7 @@ type VoiceSource = {
   rate: number
   avatarName: string
   emotion: string
+  gender?: 1 | 2
 }
 
 type OldVoice = {
@@ -378,7 +380,7 @@ type Talk = {
   dialogList: Dialog[]
 }
 
-type VoiceMap = Record<string, OldVoice | GoodVoice>
+type VoiceMap = Record<string, OldVoice | GoodVoice | string>
 
 type NPC = {
   jsonName: string
