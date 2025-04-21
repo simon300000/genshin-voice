@@ -126,8 +126,12 @@ const avatarIdNameHashMap = Object.fromEntries(Object.values(avatarExcelConfig).
 
 console.log('Reading GenshinData/BinOutput/Avatar...')
 
-const avatarConfigs = await Promise.all(avatarConfigKeys.map(async k => [k, await readJSON<AvatarConfig>(`GenshinData/BinOutput/Avatar/${k}.json`)] as const))
-const avatarConfigMap = Object.fromEntries(avatarConfigs.map(([k, v]) => [v.audio.voiceSwitch.text.toLowerCase(), k]))
+const avatarConfigs = await Promise.all(avatarConfigKeys.map(async k => [k, await readJSON<AvatarConfig>(`GenshinData/BinOutput/Avatar/${k}.json`).catch(() => {
+  console.log(`Failed to read ${k}.json`)
+  return undefined as any as AvatarConfig
+})] as const))
+// TODO: Fix reader
+const avatarConfigMap = Object.fromEntries(avatarConfigs.filter(([, v]) => v).map(([k, v]) => [v.audio.voiceSwitch.text.toLowerCase(), k]))
 
 console.log('Reading GenshinData/ExcelBinOutput/FettersExcelConfigData.json')
 
@@ -187,16 +191,19 @@ for (const voice of Object.values(voiceMap)) {
     }
     if (gameTrigger === 'Fetter') {
       const avatar = avatarConfigMap[avatarName.toLowerCase()]
-      const { nameTextMapHash, id } = avatarExcelConfig[avatar]
-      const speaker = textMaps['English(US)'][nameTextMapHash]
-      if (speaker) {
-        voice.speaker = speaker
-      }
-      const fetterTextHash = fettersTextHashMap[`${gameTriggerArgs}_${id}`]
-      if (fetterTextHash) {
-        const hash = fetterTextHash.voiceFileTextTextMapHash
-        const text = textMaps[language][hash]
-        voice.transcription = text
+      const { nameTextMapHash, id } = avatarExcelConfig[avatar] || {}
+      if (nameTextMapHash) {
+        // TODO: Fix this
+        const speaker = textMaps['English(US)'][nameTextMapHash]
+        if (speaker) {
+          voice.speaker = speaker
+        }
+        const fetterTextHash = fettersTextHashMap[`${gameTriggerArgs}_${id}`]
+        if (fetterTextHash) {
+          const hash = fetterTextHash.voiceFileTextTextMapHash
+          const text = textMaps[language][hash]
+          voice.transcription = text
+        }
       }
     }
     if (gameTrigger === 'Card') {
