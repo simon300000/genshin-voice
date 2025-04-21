@@ -2,6 +2,8 @@ result.json
 
 **/*.js
 
+/genshin-voice-wav
+
 # Logs
 logs
 *.log
